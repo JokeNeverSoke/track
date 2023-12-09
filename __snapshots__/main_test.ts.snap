@@ -1,0 +1,278 @@
+export const snapshot = {};
+
+snapshot[`parser 1`] = `
+[
+  {
+    name: {
+      type: "identifier",
+      value: "NAME",
+    },
+    type: "define-constant",
+    value: {
+      type: "string-literal",
+      value: "",
+    },
+  },
+  {
+    name: {
+      type: "identifier",
+      value: "AGE",
+    },
+    type: "define-constant",
+    value: {
+      type: "number-literal",
+      value: 19,
+    },
+  },
+  {
+    body: {
+      arguments: [
+        {
+          type: "identifier",
+          value: "x",
+        },
+        {
+          type: "identifier",
+          value: "x",
+        },
+      ],
+      name: {
+        type: "identifier",
+        value: "*",
+      },
+      type: "misc-function",
+    },
+    name: {
+      type: "identifier",
+      value: "square",
+    },
+    signature: {
+      parameters: [
+        {
+          type: "identifier",
+          value: "x",
+        },
+      ],
+      type: "untyped-parameters",
+    },
+    type: "define-function",
+  },
+  {
+    body: {
+      arguments: [
+        {
+          arguments: [
+            {
+              type: "identifier",
+              value: "x",
+            },
+          ],
+          name: {
+            type: "identifier",
+            value: "square",
+          },
+          type: "misc-function",
+        },
+        {
+          arguments: [
+            {
+              type: "identifier",
+              value: "y",
+            },
+          ],
+          name: {
+            type: "identifier",
+            value: "square",
+          },
+          type: "misc-function",
+        },
+      ],
+      name: {
+        type: "identifier",
+        value: "+",
+      },
+      type: "misc-function",
+    },
+    name: {
+      type: "identifier",
+      value: "sum-of-squares",
+    },
+    signature: {
+      parameters: [
+        {
+          name: {
+            type: "identifier",
+            value: "x",
+          },
+          type: {
+            name: {
+              type: "identifier",
+              value: "Number",
+            },
+            type: "type-literal",
+          },
+        },
+        {
+          name: {
+            type: "identifier",
+            value: "y",
+          },
+          type: {
+            name: {
+              type: "identifier",
+              value: "Number",
+            },
+            type: "type-literal",
+          },
+        },
+      ],
+      returnType: {
+        name: {
+          type: "identifier",
+          value: "Number",
+        },
+        type: "type-literal",
+      },
+      type: "typed-parameters",
+    },
+    type: "define-function",
+  },
+  {
+    body: {
+      condition: {
+        arguments: [
+          {
+            type: "identifier",
+            value: "x",
+          },
+          {
+            type: "number-literal",
+            value: 0,
+          },
+        ],
+        name: {
+          type: "identifier",
+          value: ">",
+        },
+        type: "misc-function",
+      },
+      else: {
+        type: "number-literal",
+        value: 0,
+      },
+      then: {
+        arguments: [
+          {
+            type: "identifier",
+            value: "x",
+          },
+          {
+            arguments: [
+              {
+                type: "identifier",
+                value: "x",
+              },
+              {
+                type: "number-literal",
+                value: 2,
+              },
+            ],
+            name: {
+              type: "identifier",
+              value: "*",
+            },
+            type: "misc-function",
+          },
+        ],
+        name: {
+          type: "identifier",
+          value: "sum-of-squares",
+        },
+        type: "misc-function",
+      },
+      type: "if-statement",
+    },
+    name: {
+      type: "identifier",
+      value: "func",
+    },
+    signature: {
+      parameters: [
+        {
+          type: "identifier",
+          value: "x",
+        },
+      ],
+      type: "untyped-parameters",
+    },
+    type: "define-function",
+  },
+  {
+    body: {
+      body: {
+        arguments: [
+          {
+            type: "identifier",
+            value: "x",
+          },
+        ],
+        name: {
+          type: "identifier",
+          value: "square",
+        },
+        type: "misc-function",
+      },
+      definitions: [
+        {
+          body: {
+            arguments: [
+              {
+                type: "identifier",
+                value: "x",
+              },
+              {
+                type: "identifier",
+                value: "x",
+              },
+            ],
+            name: {
+              type: "identifier",
+              value: "*",
+            },
+            type: "misc-function",
+          },
+          name: {
+            type: "identifier",
+            value: "square",
+          },
+          signature: {
+            parameters: [
+              {
+                type: "identifier",
+                value: "x",
+              },
+            ],
+            type: "untyped-parameters",
+          },
+          type: "define-function",
+        },
+      ],
+      type: "local-statement",
+    },
+    name: {
+      type: "identifier",
+      value: "func2",
+    },
+    signature: {
+      parameters: [
+        {
+          type: "identifier",
+          value: "x",
+        },
+      ],
+      type: "untyped-parameters",
+    },
+    type: "define-function",
+  },
+]
+`;

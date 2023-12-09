@@ -119,7 +119,7 @@ function isIdentifier(char: string) {
     EXTRA_ID_CHARS.includes(char);
 }
 
-function tokenize(code: string) {
+export function tokenize(code: string) {
   const tokens: Token[] = [];
   let current = 0;
   let line = 1;
@@ -434,7 +434,7 @@ TypeLiteral -> Identifier
 
 UntypedParameters -> Identifier+
 
-DefineStruct -> "define-struct" Identifier "(" Identifier* ")"
+DefineStruct -> "define-struct" Identifier "(" Parameters ")" 
 
 Function -> IfStatement
      | CondStatement
@@ -475,38 +475,35 @@ Value -> Number | String | Boolean | Identifier | Symbol
 
 */
 
-type Program = Expr[];
-type Expr =
+export type Program = Expr[];
+export type Expr =
   | Define
   | DefineStruct
   | FunctionValue;
 
-type Define =
+export type Define =
   | DefineFunction
   | DefineConstant;
 
-type DefineFunction = {
+export type DefineFunction = {
   type: "define-function";
   name: Identifier;
   signature: FunctionSignature;
   body: FunctionValue;
 };
-type DefineConstant = {
+export type DefineConstant = {
   type: "define-constant";
   name: Identifier;
   value: FunctionValue;
 };
-type DefineStruct = {
+export type DefineStruct = {
   type: "define-struct";
   name: Identifier;
-  fields: Identifier[];
+  fields: Parameters;
 };
-type FunctionSignature = {
-  type: "function-signature";
-  parameters: Parameters;
-};
-type Parameters = TypedParameters | UntypedParameters;
-type TypedParameters = {
+export type FunctionSignature = TypedParameters | UntypedParameters;
+export type Parameters = TypedParameters | UntypedParameters;
+export type TypedParameters = {
   type: "typed-parameters";
   parameters: {
     name: Identifier;
@@ -514,20 +511,20 @@ type TypedParameters = {
   }[];
   returnType: TypeAnnotation;
 };
-type TypeAnnotation = TypeFunction | TypeLiteral;
-type TypeFunction = {
+export type TypeAnnotation = TypeFunction | TypeLiteral;
+export type TypeFunction = {
   type: "type-function";
   name: "List-of" | "Any";
 };
-type TypeLiteral = {
+export type TypeLiteral = {
   type: "type-literal";
   name: Identifier;
 };
-type UntypedParameters = {
+export type UntypedParameters = {
   type: "untyped-parameters";
   parameters: Identifier[];
 };
-type FunctionValue =
+export type FunctionValue =
   | IfStatement
   | CondStatement
   | LambdaStatement
@@ -539,66 +536,66 @@ type FunctionValue =
   | MiscFunction
   | Value;
 
-type IfStatement = {
+export type IfStatement = {
   type: "if-statement";
   condition: FunctionValue;
   then: FunctionValue;
   else: FunctionValue;
 };
-type CondStatement = {
+export type CondStatement = {
   type: "cond-statement";
   clauses: CondClauseList;
 };
-type CondClauseList = {
+export type CondClauseList = {
   type: "cond-clause-list";
   clauses: CondClause[];
   else: FunctionValue | null;
 };
-type CondClause = {
+export type CondClause = {
   type: "cond-clause";
   condition: FunctionValue;
   then: FunctionValue;
 };
-type LambdaStatement = {
+export type LambdaStatement = {
   type: "lambda-statement";
   parameters: Parameters;
   body: FunctionValue;
 };
-type LocalStatement = {
+export type LocalStatement = {
   type: "local-statement";
   definitions: Define[];
   body: FunctionValue;
 };
-type LetStatement = {
+export type LetStatement = {
   type: "let-statement";
   definitions: ValuePair[];
   body: FunctionValue;
 };
-type LetRecStatement = {
+export type LetRecStatement = {
   type: "letrec-statement";
   definitions: ValuePair[];
   body: FunctionValue;
 };
-type LetStarStatement = {
+export type LetStarStatement = {
   type: "letstar-statement";
   definitions: ValuePair[];
   body: FunctionValue;
 };
-type ValuePair = {
+export type ValuePair = {
   type: "value-pair";
   name: Identifier;
   value: FunctionValue;
 };
-type RequireStatement = {
+export type RequireStatement = {
   type: "require-statement";
   module: Identifier;
 };
-type MiscFunction = {
+export type MiscFunction = {
   type: "misc-function";
   name: Identifier;
   arguments: FunctionValue[];
 };
-type Value =
+export type Value =
   | NumberLiteral
   | NumberExact
   | NumberInexact
@@ -606,37 +603,37 @@ type Value =
   | BooleanLiteral
   | Identifier
   | SymbolValue;
-type NumberLiteral = {
+export type NumberLiteral = {
   type: "number-literal";
   value: number;
 };
-type NumberExact = {
+export type NumberExact = {
   type: "number-exact";
   numerator: number;
   denominator: number;
 };
-type NumberInexact = {
+export type NumberInexact = {
   type: "number-inexact";
   value: number;
 };
-type StringLiteral = {
+export type StringLiteral = {
   type: "string-literal";
   value: string;
 };
-type BooleanLiteral = {
+export type BooleanLiteral = {
   type: "boolean-literal";
   value: boolean;
 };
-type Identifier = {
+export type Identifier = {
   type: "identifier";
   value: string;
 };
-type SymbolValue = {
+export type SymbolValue = {
   type: "symbol-value";
   value: string;
 };
 
-function parse(tokens: Token[]) {
+export function parse(tokens: Token[]) {
   let current = 0;
 
   function advance() {
@@ -706,7 +703,6 @@ function parse(tokens: Token[]) {
   function defineFunction(): DefineFunction {
     consume("leftParen", "Expected ( before function signature");
     const name = identifier();
-    console.log("function name", name);
     const signature = functionSignature();
     consume("rightParen", "Expected ) after function signature");
     const body = functionValue();
@@ -729,10 +725,7 @@ function parse(tokens: Token[]) {
   function defineStruct(): DefineStruct {
     const name = identifier();
     consume("leftParen", "Expected ( before struct fields");
-    const fields: Identifier[] = [];
-    while (!check("rightParen")) {
-      fields.push(identifier());
-    }
+    const fields = parameters();
     consume("rightParen", "Expected ) after struct fields");
     return {
       type: "define-struct",
@@ -742,14 +735,9 @@ function parse(tokens: Token[]) {
   }
   function functionSignature(): FunctionSignature {
     const params = parameters();
-    return {
-      type: "function-signature",
-      parameters: params,
-    };
+    return params;
   }
   function parameters(): Parameters {
-    console.log("id", peek());
-    console.log("is", peekNext());
     if (checkNext("t-is")) {
       return typedParameters();
     } else {
@@ -1079,13 +1067,3 @@ function parse(tokens: Token[]) {
 
   return program();
 }
-
-import { inspect } from "node:util";
-let code = `\
-(define (f x : Number & y : Number & z : Number -> Number)
-  (+ x y z))`;
-const tokens = tokenize(code);
-console.log(tokens);
-console.log(inspect(parse(tokens), { depth: null, colors: true }));
-
-
