@@ -10,7 +10,69 @@ for the racket language. Help is appreciated in _any_ of the following domains:
 
 ## Usage
 
-_unusable right now_
+```
+T(yped)Rack(et) v0.0.1
+Makes Racket slightly better. Only slightly.
+
+USAGE:
+  $ trc [options] <file>
+
+ARGUMENTS:
+  <file>        The file to compile
+
+OPTIONS:
+  --out=<file>  The output file (default: out.rkt)
+  --no-emit     Do not emit the compiled code (only typecheck)
+  --no-check    Skips typechecking (may fail to compile)
+
+EXAMPLE:
+  $ trc --out=main.rkt main.trkt
+
+REPOSITORY:
+  <https://github.com/jokeneversoke/track>
+
+AUTHOR:
+  Joseph Zeng   <jokeneversoke@gmail.com>
+
+LICENSE:
+  GPLv3, see <https://github.com/JokeNeverSoke/track/blob/master/LICENSE>
+  for details. No warranties provided.
+```
+
+```
+  error: function expects return type String, but got Number instead
+   2 | 
+   3 | 
+   4 | (define g (lambda (x : Number & y : Number -> String) (+ x y)))
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   5 | 
+   6 | (define (f x : Number -> String)
+
+  error: number->string argument 1 expects number, but received String instead
+   5 | 
+   6 | (define (f x : Number -> String)
+   7 |     (string-append (number->string (g x 10)) " is a number"))
+                                          ^^^^^^^^
+   8 | 
+   9 | (let ([x 10]
+
+  error: identifier x already defined locally
+   9 | (let ([x 10]
+  10 |       [y 20]
+  11 |       [x 30])
+              ^
+  12 |     (g x y))
+  13 | 
+
+  error: function u is not type-checked
+  13 | 
+  14 > (define (u x)
+  15 > (+ x 5)
+  16 > )
+  17 | 
+
+Found 4 errors, skipping emit. (--no-check to override)
+```
 
 ## Examples
 

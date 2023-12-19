@@ -1,6 +1,6 @@
 import { assertEquals } from "https://deno.land/std@0.208.0/assert/mod.ts";
 import { assertSnapshot } from "https://deno.land/std@0.208.0/testing/snapshot.ts";
-import { parse, tokenize } from "./main.ts";
+import { parse, tokenize } from "./parser.ts";
 
 Deno.test("parser", async (t) => {
   const tokens = tokenize(`\

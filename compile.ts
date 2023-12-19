@@ -1,4 +1,4 @@
-import * as AST from "./main.ts";
+import * as AST from "./parser.ts";
 
 /** intermediate representation to allow indentation */
 type PartialCode = string;

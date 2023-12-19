@@ -1,5 +1,5 @@
 {
   "tasks": {
-    "dev": "deno run --watch main.ts"
+    "build": "deno compile --allow-all -o ./dist/trc ./cli.ts"
   }
 }

@@ -28,19 +28,16 @@
     [(not (number? z)) (error 'f "expects a Number as 3rd argument, given ~e" z)]
     [else (+ x y z)]))
 */
-type Token =
+export interface Position {
+  line: number;
+  column: number;
+  index: number;
+}
+export type Token =
   & {
     position: {
-      start: {
-        line: number;
-        column: number;
-        index: number;
-      };
-      end: {
-        line: number;
-        column: number;
-        index: number;
-      };
+      start: Position;
+      end: Position;
     };
   }
   & (
@@ -137,7 +134,7 @@ export function tokenize(code: string) {
   function advance() {
     current++;
     column++;
-    if (code[current] === "\n") {
+    if (code[current-1] === "\n") {
       line++;
       column = 0;
     }
@@ -515,45 +512,45 @@ export type Define =
   | DefineFunction
   | DefineConstant;
 
-export type DefineFunction = {
+export type DefineFunction = WithLoc<{
   type: "define-function";
   name: Identifier;
   signature: FunctionSignature;
   body: FunctionValue;
-};
-export type DefineConstant = {
+}>;
+export type DefineConstant = WithLoc<{
   type: "define-constant";
   name: Identifier;
   value: FunctionValue;
-};
-export type DefineStruct = {
+}>;
+export type DefineStruct = WithLoc<{
   type: "define-struct";
   name: Identifier;
   fields: Parameters;
-};
+}>;
 export type FunctionSignature = TypedParameters | UntypedParameters;
 export type Parameters = TypedParameters | UntypedParameters;
-export type TypedParameters = {
+export type TypedParameters = WithLoc<{
   type: "typed-parameters";
   parameters: {
     name: Identifier;
     type: TypeAnnotation;
   }[];
   returnType: TypeAnnotation | null;
-};
+}>;
 export type TypeAnnotation = TypeFunction | TypeLiteral;
-export type TypeFunction = {
+export type TypeFunction = WithLoc<{
   type: "type-function";
   name: "List-of" | "Any";
-};
-export type TypeLiteral = {
+}>;
+export type TypeLiteral = WithLoc<{
   type: "type-literal";
   name: Identifier;
-};
-export type UntypedParameters = {
+}>;
+export type UntypedParameters = WithLoc<{
   type: "untyped-parameters";
   parameters: Identifier[];
-};
+}>;
 export type FunctionValue =
   | IfStatement
   | CondStatement
@@ -566,65 +563,65 @@ export type FunctionValue =
   | MiscFunction
   | Value;
 
-export type IfStatement = {
+export type IfStatement = WithLoc<{
   type: "if-statement";
   condition: FunctionValue;
   then: FunctionValue;
   else: FunctionValue;
-};
-export type CondStatement = {
+}>;
+export type CondStatement = WithLoc<{
   type: "cond-statement";
   clauses: CondClauseList;
-};
-export type CondClauseList = {
+}>;
+export type CondClauseList = WithLoc<{
   type: "cond-clause-list";
   clauses: CondClause[];
   else: FunctionValue | null;
-};
-export type CondClause = {
+}>;
+export type CondClause = WithLoc<{
   type: "cond-clause";
   condition: FunctionValue;
   then: FunctionValue;
-};
-export type LambdaStatement = {
+}>;
+export type LambdaStatement = WithLoc<{
   type: "lambda-statement";
   parameters: Parameters;
   body: FunctionValue;
-};
-export type LocalStatement = {
+}>;
+export type LocalStatement = WithLoc<{
   type: "local-statement";
   definitions: Define[];
   body: FunctionValue;
-};
-export type LetStatement = {
+}>;
+export type LetStatement = WithLoc<{
   type: "let-statement";
   definitions: ValuePair[];
   body: FunctionValue;
-};
-export type LetRecStatement = {
+}>;
+export type LetRecStatement = WithLoc<{
   type: "letrec-statement";
   definitions: ValuePair[];
   body: FunctionValue;
-};
-export type LetStarStatement = {
+}>;
+export type LetStarStatement = WithLoc<{
   type: "letstar-statement";
   definitions: ValuePair[];
   body: FunctionValue;
-};
-export type ValuePair = {
+}>;
+export type ValuePair = WithLoc<{
   type: "value-pair";
   name: Identifier;
   value: FunctionValue;
-};
-export type RequireStatement = {
+}>;
+export type RequireStatement = WithLoc<{
   type: "require-statement";
   module: Identifier;
-};
-export type MiscFunction = {
+}>;
+export type MiscFunction = WithLoc<{
   type: "misc-function";
   func: FunctionValue;
   arguments: FunctionValue[];
-};
+}>;
 export type Value =
   | NumberLiteral
   | NumberExact
@@ -633,48 +630,40 @@ export type Value =
   | BooleanLiteral
   | Identifier
   | SymbolValue;
-export type NumberLiteral = {
+export type NumberLiteral = WithLoc<{
   type: "number-literal";
   value: number;
-};
-export type NumberExact = {
+}>;
+export type NumberExact = WithLoc<{
   type: "number-exact";
   numerator: number;
   denominator: number;
-};
-export type NumberInexact = {
+}>;
+export type NumberInexact = WithLoc<{
   type: "number-inexact";
   value: number;
-};
-export type StringLiteral = {
+}>;
+export type StringLiteral = WithLoc<{
   type: "string-literal";
   value: string;
-};
-export type BooleanLiteral = {
+}>;
+export type BooleanLiteral = WithLoc<{
   type: "boolean-literal";
   value: boolean;
-};
-export type Identifier = {
+}>;
+export type Identifier = WithLoc<{
   type: "identifier";
   value: string;
-};
-export type SymbolValue = {
+}>;
+export type SymbolValue = WithLoc<{
   type: "symbol-value";
   value: string;
-};
+}>;
 
 export type WithLoc<T> = T & {
   position: {
-    start: {
-      line: number;
-      column: number;
-      index: number;
-    };
-    end: {
-      line: number;
-      column: number;
-      index: number;
-    };
+    start: Position;
+    end: Position;
   };
 };
 
@@ -697,7 +686,11 @@ export function parse(tokens: Token[]) {
   function previous() {
     return tokens[current - 1];
   }
-  function consume<T extends Token["type"]>(type: T, message: string) {
+  function consume<T extends Token["type"]>(
+    type: T,
+    message: string,
+  ): Extract<Token, { type: T }> extends never ? Token
+    : Extract<Token, { type: T }> {
     if (check(type)) {
       return advance() as Extract<Token, { type: T }>;
     }
@@ -734,19 +727,21 @@ export function parse(tokens: Token[]) {
     }
   }
   function define(): Define {
-    consume("leftParen", "Expected ( before define");
+    const { start } = consume("leftParen", "Expected ( before define").position;
     consume("define", "Expected define");
-    let d: Define;
+    let d: WithLoc<Define>;
     if (check("leftParen")) {
       d = defineFunction();
     } else {
       d = defineConstant();
     }
-    consume("rightParen", "Expected ) after define");
-    return d;
+    const { end } = consume("rightParen", "Expected ) after define").position;
+
+    return { ...d, position: { start, end } };
   }
   function defineFunction(): DefineFunction {
-    consume("leftParen", "Expected ( before function signature");
+    const { start } =
+      consume("leftParen", "Expected ( before function signature").position;
     const name = identifier();
     const signature = functionSignature();
     consume("rightParen", "Expected ) after function signature");
@@ -756,6 +751,7 @@ export function parse(tokens: Token[]) {
       name,
       signature,
       body,
+      position: { start, end: body.position.end },
     };
   }
   function defineConstant(): DefineConstant {
@@ -765,20 +761,24 @@ export function parse(tokens: Token[]) {
       type: "define-constant",
       name,
       value,
+      position: { start: name.position.start, end: value.position.end },
     };
   }
   function defineStruct(): DefineStruct {
-    consume("leftParen", "Expected ( before define-struct");
+    const { start } =
+      consume("leftParen", "Expected ( before define-struct").position;
     consume("define-struct", "Expected define-struct");
     const name = identifier();
     consume("leftParen", "Expected ( before struct fields");
     const fields = parameters();
     consume("rightParen", "Expected ) after struct fields");
-    consume("rightParen", "Expected ) after define-struct");
+    const { end } =
+      consume("rightParen", "Expected ) after define-struct").position;
     return {
       type: "define-struct",
       name,
       fields,
+      position: { start, end },
     };
   }
   function functionSignature(): FunctionSignature {
@@ -817,6 +817,10 @@ export function parse(tokens: Token[]) {
       type: "typed-parameters",
       parameters,
       returnType,
+      position: {
+        start: parameters[0].name.position.start,
+        end: parameters[parameters.length - 1].type.position.end,
+      },
     };
   }
   function typeAnnotation(): TypeAnnotation {
@@ -827,20 +831,23 @@ export function parse(tokens: Token[]) {
     }
   }
   function typeFunction(): TypeFunction {
-    consume("leftParen", "Expected ( before type function");
+    const { start } =
+      consume("leftParen", "Expected ( before type function").position;
     const name: Identifier = identifier();
-    const type = {
+    const { end } =
+      consume("rightParen", "Expected ) after type function").position;
+    return {
       type: "type-function" as const,
       name: name.value as "List-of" | "Any",
+      position: { start, end },
     };
-    consume("rightParen", "Expected ) after type function");
-    return type;
   }
   function typeLiteral(): TypeLiteral {
     const name = identifier();
     return {
       type: "type-literal",
       name,
+      position: name.position,
     };
   }
   function untypedParameters(): UntypedParameters {
@@ -851,6 +858,10 @@ export function parse(tokens: Token[]) {
     return {
       type: "untyped-parameters",
       parameters,
+      position: {
+        start: parameters[0].position.start,
+        end: parameters[parameters.length - 1].position.end,
+      },
     };
   }
   function functionValue(): FunctionValue {
@@ -878,28 +889,34 @@ export function parse(tokens: Token[]) {
     }
   }
   function ifStatement(): IfStatement {
-    consume("leftParen", "Expected ( before if statement");
+    const { start } =
+      consume("leftParen", "Expected ( before if statement").position;
     consume("if", "Expected if");
     const condition = functionValue();
     const then = functionValue();
     console.log({ condition, then });
     const else_ = functionValue();
-    consume("rightParen", "Expected ) after if statement");
+    const { end } =
+      consume("rightParen", "Expected ) after if statement").position;
     return {
       type: "if-statement",
       condition,
       then,
       else: else_,
+      position: { start, end },
     };
   }
   function condStatement(): CondStatement {
-    consume("leftParen", "Expected ( before cond statement");
+    const { start } =
+      consume("leftParen", "Expected ( before cond statement").position;
     consume("cond", "Expected cond");
     const clauses = condClauseList();
-    consume("rightParen", "Expected ) after cond statement");
+    const { end } =
+      consume("rightParen", "Expected ) after cond statement").position;
     return {
       type: "cond-statement",
       clauses,
+      position: { start, end },
     };
   }
   function condClauseList(): CondClauseList {
@@ -908,45 +925,55 @@ export function parse(tokens: Token[]) {
       clauses.push(condClause());
     }
     let else_ = null;
+    const { start } = clauses[0].position;
+    let end = clauses[clauses.length - 1].position.end;
     if (checkNext("else")) {
-      consume("leftParen", "Expected ( before else clause")
+      consume("leftParen", "Expected ( before else clause");
       consume("else", "Expected else");
       else_ = functionValue();
-      consume("rightParen", "Expected ) after else clause");
+      end = consume("rightParen", "Expected ) after else clause").position.end;
     }
     return {
       type: "cond-clause-list",
       clauses,
       else: else_,
+      position: { start, end },
     };
   }
   function condClause(): CondClause {
-    consume("leftParen", "Expected ( before cond clause");
+    const { start } =
+      consume("leftParen", "Expected ( before cond clause").position;
     const condition = functionValue();
     const then = functionValue();
-    consume("rightParen", "Expected ) after cond clause");
+    const { end } =
+      consume("rightParen", "Expected ) after cond clause").position;
     return {
       type: "cond-clause",
       condition,
       then,
+      position: { start, end },
     };
   }
   function lambdaStatement(): LambdaStatement {
-    consume("leftParen", "Expected ( before lambda statement");
+    const { start } =
+      consume("leftParen", "Expected ( before lambda statement").position;
     consume("lambda", "Expected lambda");
     consume("leftParen", "Expected ( before parameters");
     const params = parameters();
     consume("rightParen", "Expected ) after parameters");
     const body = functionValue();
-    consume("rightParen", "Expected ) after lambda statement");
+    const { end } =
+      consume("rightParen", "Expected ) after lambda statement").position;
     return {
       type: "lambda-statement",
       parameters: params,
       body,
+      position: { start, end },
     };
   }
   function localStatement(): LocalStatement {
-    consume("leftParen", "Expected ( before local statement");
+    const { start } =
+      consume("leftParen", "Expected ( before local statement").position;
     consume("local", "Expected local");
     consume("leftParen", "Expected ( before definitions");
     const definitions: Define[] = [];
@@ -955,15 +982,18 @@ export function parse(tokens: Token[]) {
     }
     consume("rightParen", "Expected ) after definitions");
     const body = functionValue();
-    consume("rightParen", "Expected ) after local statement");
+    const { end } =
+      consume("rightParen", "Expected ) after local statement").position;
     return {
       type: "local-statement",
       definitions,
       body,
+      position: { start, end },
     };
   }
   function letStatement(): LetStatement {
-    consume("leftParen", "Expected ( before let statement");
+    const { start } =
+      consume("leftParen", "Expected ( before let statement").position;
     consume("let", "Expected let");
     consume("leftParen", "Expected ( before definitions");
     const definitions: ValuePair[] = [];
@@ -972,15 +1002,18 @@ export function parse(tokens: Token[]) {
     }
     consume("rightParen", "Expected ) after definitions");
     const body = functionValue();
-    consume("rightParen", "Expected ) after let statement");
+    const { end } =
+      consume("rightParen", "Expected ) after let statement").position;
     return {
       type: "let-statement",
       definitions,
       body,
+      position: { start, end },
     };
   }
   function letRecStatement(): LetRecStatement {
-    consume("leftParen", "Expected ( before letrec statement");
+    const { start } =
+      consume("leftParen", "Expected ( before letrec statement").position;
     consume("letrec", "Expected letrec");
     consume("leftParen", "Expected ( before definitions");
     const definitions: ValuePair[] = [];
@@ -989,15 +1022,18 @@ export function parse(tokens: Token[]) {
     }
     consume("rightParen", "Expected ) after definitions");
     const body = functionValue();
-    consume("rightParen", "Expected ) after letrec statement");
+    const { end } =
+      consume("rightParen", "Expected ) after letrec statement").position;
     return {
       type: "letrec-statement",
       definitions,
       body,
+      position: { start, end },
     };
   }
   function letStarStatement(): LetStarStatement {
-    consume("leftParen", "Expected ( before let* statement");
+    const { start } =
+      consume("leftParen", "Expected ( before let* statement").position;
     consume("let*", "Expected let*");
     consume("leftParen", "Expected ( before definitions");
     const definitions: ValuePair[] = [];
@@ -1006,46 +1042,56 @@ export function parse(tokens: Token[]) {
     }
     consume("rightParen", "Expected ) after definitions");
     const body = functionValue();
-    consume("rightParen", "Expected ) after let* statement");
+    const { end } =
+      consume("rightParen", "Expected ) after let* statement").position;
     return {
       type: "letstar-statement",
       definitions,
       body,
+      position: { start, end },
     };
   }
   function valuePair(): ValuePair {
-    consume("leftParen", "Expected ( before value pair");
+    const { start } =
+      consume("leftParen", "Expected ( before value pair").position;
     const name = identifier();
     const value = functionValue();
-    consume("rightParen", "Expected ) after value pair");
+    const { end } =
+      consume("rightParen", "Expected ) after value pair").position;
     return {
       type: "value-pair",
       name,
       value,
+      position: { start, end },
     };
   }
   function requireStatement(): RequireStatement {
-    consume("leftParen", "Expected ( before require statement");
+    const { start } =
+      consume("leftParen", "Expected ( before require statement").position;
     consume("require", "Expected require");
     const module = identifier();
-    consume("rightParen", "Expected ) after require statement");
+    const { end } =
+      consume("rightParen", "Expected ) after require statement").position;
     return {
       type: "require-statement",
       module,
+      position: { start, end },
     };
   }
   function miscFunction(): MiscFunction {
-    consume("leftParen", "Expected ( before function");
+    const { start } =
+      consume("leftParen", "Expected ( before function").position;
     const func = functionValue();
     const arguments_: FunctionValue[] = [];
     while (!check("rightParen")) {
       arguments_.push(functionValue());
     }
-    consume("rightParen", "Expected ) after function");
+    const { end } = consume("rightParen", "Expected ) after function").position;
     return {
       type: "misc-function",
       func,
       arguments: arguments_,
+      position: { start, end },
     };
   }
   function identifier(): Identifier {
@@ -1054,6 +1100,7 @@ export function parse(tokens: Token[]) {
     return {
       type: "identifier",
       value: token.value,
+      position: token.position,
     };
   }
   function value(): Value {
@@ -1082,6 +1129,7 @@ export function parse(tokens: Token[]) {
     return {
       type: "number-literal",
       value: token.value,
+      position: token.position,
     };
   }
   function numberExact(): NumberExact {
@@ -1090,6 +1138,7 @@ export function parse(tokens: Token[]) {
       type: "number-exact",
       numerator: token.numerator,
       denominator: token.denominator,
+      position: token.position,
     };
   }
   function numberInexact(): NumberInexact {
@@ -1097,6 +1146,7 @@ export function parse(tokens: Token[]) {
     return {
       type: "number-inexact",
       value: token.value,
+      position: token.position,
     };
   }
   function stringLiteral(): StringLiteral {
@@ -1104,6 +1154,7 @@ export function parse(tokens: Token[]) {
     return {
       type: "string-literal",
       value: token.value,
+      position: token.position,
     };
   }
   function booleanLiteral(): BooleanLiteral {
@@ -1111,6 +1162,7 @@ export function parse(tokens: Token[]) {
     return {
       type: "boolean-literal",
       value: token.value,
+      position: token.position,
     };
   }
   function symbolValue(): SymbolValue {
@@ -1118,6 +1170,7 @@ export function parse(tokens: Token[]) {
     return {
       type: "symbol-value",
       value: token.value,
+      position: token.position,
     };
   }
 

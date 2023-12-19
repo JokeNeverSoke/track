@@ -1,8 +1,13 @@
-import * as AST from "./main.ts";
+import * as AST from "./parser.ts";
 
-type TypeError = {
+type Range = {
+  start: AST.Position;
+  end: AST.Position;
+};
+export type TypeError = {
   message: string;
-  locations?: Array<{ index: number; line: number; column: number }>;
+  range: Range;
+  supplements?: { range: Range; annotation: string }[];
 };
 type CodeType = {
   type: "number" | "string" | "boolean" | "symbol";
@@ -104,6 +109,11 @@ const BUILTINS: Record<string, CodeType> = {
     args: [{ type: "string" }],
     ret: { type: "number" },
   },
+  "number->string": {
+    type: "function",
+    args: [{ type: "number" }],
+    ret: { type: "string" },
+  },
 };
 
 function is<T extends string>(
@@ -128,7 +138,11 @@ function canBe<T extends CodeType>(from: CodeType, to: T): boolean {
   }
 }
 
-export function typecheck(ast: AST.Program): TypeError[] {
+export interface TypeCheckOptions {}
+export function typecheck(
+  ast: AST.Program,
+  opts: TypeCheckOptions = {},
+): TypeError[] {
   let errors: TypeError[] = [];
   const globalEnv = new Env();
   Object.entries(BUILTINS).forEach(([name, type]) => {
@@ -171,6 +185,7 @@ export function typecheck(ast: AST.Program): TypeError[] {
           if (structEnv[type.name.value] === undefined) {
             errors.push({
               message: `unknown type ${type.name.value}`,
+              range: type.name.position,
             });
             return { type: "any" };
           } else {
@@ -194,6 +209,7 @@ export function typecheck(ast: AST.Program): TypeError[] {
         if (type !== undefined) {
           errors.push({
             message: `identifier ${name} already defined`,
+            range: expr.name.position,
           });
           // do not modify
           return {
@@ -236,6 +252,7 @@ export function typecheck(ast: AST.Program): TypeError[] {
         if (type !== undefined) {
           errors.push({
             message: `identifier ${name} already defined`,
+            range: expr.name.position,
           });
           // do not modify
           return {
@@ -256,6 +273,7 @@ export function typecheck(ast: AST.Program): TypeError[] {
         if (type !== undefined) {
           errors.push({
             message: `identifier ${name} already defined`,
+            range: expr.name.position,
           });
           // do not modify
           return {
@@ -368,6 +386,7 @@ export function typecheck(ast: AST.Program): TypeError[] {
           message: `cond condition expects Boolean, but got ${
             p(condType)
           } instead`,
+          range: clause.condition.position,
         });
       }
       return typecheckExpr(clause.then, env);
@@ -385,6 +404,7 @@ export function typecheck(ast: AST.Program): TypeError[] {
     if (!canBe(condType, { type: "boolean" })) {
       errors.push({
         message: `if condition expects Boolean, but got ${p(condType)} instead`,
+        range: expr.condition.position,
       });
     }
     const thenType = typecheckExpr(expr.then, env);
@@ -401,6 +421,7 @@ export function typecheck(ast: AST.Program): TypeError[] {
     if (expr.parameters.type === "untyped-parameters") {
       errors.push({
         message: `lambda is not type-checked`,
+        range: expr.parameters.position,
       });
       return {
         type: "function",
@@ -432,6 +453,7 @@ export function typecheck(ast: AST.Program): TypeError[] {
         message: `function expects return type ${p(expectedReturn)}, but got ${
           p(actualReturn)
         } instead`,
+        range: expr.position,
       });
     }
     return {
@@ -447,6 +469,7 @@ export function typecheck(ast: AST.Program): TypeError[] {
       if (type !== undefined) {
         errors.push({
           message: `identifier ${name.value} already defined locally`,
+          range: name.position,
         });
         // do not modify
         return {
@@ -468,6 +491,7 @@ export function typecheck(ast: AST.Program): TypeError[] {
       if (type !== undefined) {
         errors.push({
           message: `identifier ${name.value} already defined locally`,
+          range: name.position,
         });
         // do not modify
         return {
@@ -489,6 +513,7 @@ export function typecheck(ast: AST.Program): TypeError[] {
       if (type !== undefined) {
         errors.push({
           message: `identifier ${name.value} already defined locally`,
+          range: name.position,
         });
         // do not modify
         return {
@@ -525,6 +550,7 @@ export function typecheck(ast: AST.Program): TypeError[] {
     if (expr.signature.type === "untyped-parameters") {
       errors.push({
         message: `function ${expr.name.value} is not type-checked`,
+        range: expr.position,
       });
     } else {
       const args = expr.signature.parameters;
@@ -540,7 +566,8 @@ export function typecheck(ast: AST.Program): TypeError[] {
       const ret = collapse(actualReturn);
       if (expr.signature.returnType === null) {
         errors.push({
-          message: `function ${expr.name.value} is not type-checked`,
+          message: `function ${expr.name.value} has no return type`,
+          range: expr.signature.position,
         });
         return {
           type: "flexible",
@@ -552,6 +579,7 @@ export function typecheck(ast: AST.Program): TypeError[] {
           message: `function ${expr.name.value} expects return type ${
             p(expectedReturn)
           }, but got ${p(ret)} instead`,
+          range: expr.position,
         });
       }
     }
@@ -565,6 +593,7 @@ export function typecheck(ast: AST.Program): TypeError[] {
     if (type === undefined) {
       errors.push({
         message: `undefined identifier ${identifier}`,
+        range: expr.position,
       });
       return {
         type: "flexible",
@@ -584,6 +613,7 @@ export function typecheck(ast: AST.Program): TypeError[] {
         message: `undefined function identifier ${
           (expr.func as AST.Identifier).value
         }`,
+        range: expr.func.position,
       });
       return {
         type: "flexible",
@@ -596,6 +626,7 @@ export function typecheck(ast: AST.Program): TypeError[] {
     if (!is(type, "function")) {
       errors.push({
         message: `${name} is not callable`,
+        range: expr.func.position,
       });
       return {
         type: "flexible",
@@ -625,11 +656,13 @@ export function typecheck(ast: AST.Program): TypeError[] {
           errors.push({
             message:
               `${name} expects at least ${type.args.length} arguments, but received ${args.length} instead`,
+            range: expr.position,
           });
         } else {
           errors.push({
             message:
               `${name} expects ${type.args.length} arguments, but received ${args.length} instead`,
+            range: expr.position,
           });
         }
         return {
@@ -644,6 +677,7 @@ export function typecheck(ast: AST.Program): TypeError[] {
             message: `${name} argument ${
               i + 1
             } expects ${expected.type}, but received ${p(arg)} instead`,
+            range: expr.arguments[i].position,
           });
         }
       }

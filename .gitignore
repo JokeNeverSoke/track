@@ -1,1 +1,11 @@
+# .gitignore
 .vscode
+
+# build artefacts
+dist
+
+example.trkt
+out.rkt
+
+
+
