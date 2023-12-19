@@ -1,3 +1,2 @@
-(define (f x : String & y : Number -> Number)
-  (local ([define (g z : Number -> Number) (+ y z)])
-    (+ (string->number x) (g y) 5)))
+(define f (lambda (x : Number & y : Number -> Number) (+ x y)))
+(f 1 2)

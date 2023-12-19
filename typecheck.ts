@@ -295,11 +295,14 @@ export function typecheck(ast: AST.Program): TypeError[] {
       case "define-struct": // already handled
       case "if-statement":
       case "cond-statement":
-      case "lambda-statement":
-      case "let-statement":
       case "require-statement":
-      case "letstar-statement":
         return { type: "any" };
+      case "lambda-statement":
+        return typecheckLambdaStatement(expr, env);
+      case "let-statement":
+        return typecheckLetStatement(expr, env);
+      case "letstar-statement":
+        return typecheckLetStarStatement(expr, env);
       case "letrec-statement":
         return typecheckLetRecStatement(expr, env);
       case "local-statement":
@@ -331,6 +334,90 @@ export function typecheck(ast: AST.Program): TypeError[] {
           type: "number",
         };
     }
+  }
+  function typecheckLambdaStatement(
+    expr: AST.LambdaStatement,
+    env: Env,
+  ): CodeType {
+    if (expr.parameters.type === "untyped-parameters") {
+      errors.push({
+        message: `lambda is not type-checked`,
+      });
+      return {
+        type: "function",
+        args: expr.parameters.parameters.map(() => ({ type: "any" })),
+        ret: { type: "any" },
+      };
+    }
+
+    const args = expr.parameters.parameters;
+    const argTypes: [string, CodeType][] = args.map((arg) => {
+      return [arg.name.value, toActualType(arg.type)];
+    });
+
+    const localEnv = env.subEnv();
+    argTypes.forEach(([name, type]) => {
+      localEnv.set(name, type);
+    });
+    const actualReturn = collapse(typecheckExpr(expr.body, localEnv));
+    if (expr.parameters.returnType === null) {
+      return {
+        type: "function",
+        args: argTypes.map(([, t]) => t),
+        ret: { type: "any" },
+      };
+    }
+    const expectedReturn = toActualType(expr.parameters.returnType);
+    if (!canBe(actualReturn, expectedReturn)) {
+      errors.push({
+        message:
+          `function expects return type ${expectedReturn.type}, but got ${actualReturn.type} instead`,
+      });
+    }
+    return {
+      type: "function",
+      args: argTypes.map(([, t]) => t),
+      ret: expectedReturn,
+    };
+  }
+  function typecheckLetStatement(expr: AST.LetStatement, env: Env): CodeType {
+    const localEnv = env.subEnv();
+    expr.definitions.forEach(({ name, value }) => {
+      const type = localEnv.getLocal(name.value);
+      if (type !== undefined) {
+        errors.push({
+          message: `identifier ${name.value} already defined locally`,
+        });
+        // do not modify
+        return {
+          type: "flexible",
+        };
+      }
+      const returnType = typecheckExpr(value, localEnv);
+      localEnv.set(name.value, returnType);
+    });
+    return typecheckExpr(expr.body, localEnv);
+  }
+  function typecheckLetStarStatement(
+    expr: AST.LetStarStatement,
+    env: Env,
+  ): CodeType {
+    const localEnv = env.subEnv();
+    expr.definitions.forEach(({ name, value }) => {
+      const type = localEnv.getLocal(name.value);
+      if (type !== undefined) {
+        errors.push({
+          message: `identifier ${name.value} already defined locally`,
+        });
+        // do not modify
+        return {
+          type: "flexible",
+        };
+      }
+      const returnType = typecheckExpr(value, localEnv);
+      localEnv.set(name.value, returnType);
+    });
+    return typecheckExpr(expr.body, localEnv);
   }
   function typecheckLetRecStatement(
     expr: AST.LetRecStatement,
