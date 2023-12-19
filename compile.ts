@@ -5,7 +5,23 @@ type PartialCode = string;
 export interface CompileOptions {
   indent?: number | "tab";
 }
-function compile(ast: AST.Program, opts: CompileOptions = {
+
+const typeToString = (type: AST.TypeAnnotation): string => {
+  if (type.type === "type-function") {
+    switch (type.name) {
+      case "List-of":
+        return `(Listof Any)`; // TODO
+      case "Any":
+        return "any";
+    }
+  } else if (type.type === "type-literal") {
+    return type.name.value;
+  } else {
+    throw new Error(`Unknown type: ${type}`);
+  }
+};
+
+export function compile(ast: AST.Program, opts: CompileOptions = {
   indent: 2,
 }): string {
   const indent = opts.indent === "tab" ? "\t" : " ".repeat(opts.indent ?? 2);
@@ -111,6 +127,17 @@ function compile(ast: AST.Program, opts: CompileOptions = {
   }
   function compileDefineFunction(expr: AST.DefineFunction): PartialCode {
     return partial([
+      `;; ${expr.name.value} : ${
+        expr.signature.parameters.map((param) => {
+          return expr.signature.type === "untyped-parameters"
+            ? "any"
+            : typeToString(param.type as AST.TypeAnnotation);
+        }).join(" ")
+      } -> ${
+        expr.signature.type === "untyped-parameters"
+          ? "any"
+          : typeToString(expr.signature.returnType)
+      }`,
       "(define (" + compileIdentifier(expr.name) + " " +
       compileFunctionSignature(expr.signature) + ")",
       layer(compileFunctionValue(expr.body)) + ")",
@@ -243,22 +270,5 @@ function compile(ast: AST.Program, opts: CompileOptions = {
   function compileSymbolValue(expr: AST.SymbolValue): string {
     return expr.value;
   }
-  return partials.join("\n");
+  return "#lang htdp/isl+\n" + partials.join("\n");
 }
-
-const code = `\
-(define NAME "Joseph")
-(define AGE 19)
-(define (square x)
-  (* x x))
-(define (sum-of-squares x : Number & y : Number -> Number)
-  (+ (square x) (square y)))
-(define (func x)
-  (if (> x 0) (sum-of-squares x (* x 2)) 0))
-(define (func2 x)
-  (local ((define (square x)
-            (* x x)))
-         (square x)))`;
-const tokens = AST.tokenize(code);
-const ast = AST.parse(tokens);
-console.log(compile(ast));

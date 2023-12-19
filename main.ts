@@ -434,7 +434,7 @@ TypeLiteral -> Identifier
 
 UntypedParameters -> Identifier+
 
-DefineStruct -> "define-struct" Identifier "(" Parameters ")" 
+DefineStruct -> "define-struct" Identifier "(" Parameters ")"
 
 Function -> IfStatement
      | CondStatement
@@ -633,6 +633,21 @@ export type SymbolValue = {
   value: string;
 };
 
+export type WithLoc<T> = T & {
+  position: {
+    start: {
+      line: number;
+      column: number;
+      index: number;
+    };
+    end: {
+      line: number;
+      column: number;
+      index: number;
+    };
+  };
+};
+
 export function parse(tokens: Token[]) {
   let current = 0;
 
@@ -669,7 +684,7 @@ export function parse(tokens: Token[]) {
   }
   function checkNext(type: Token["type"]) {
     if (isAtEnd()) return false;
-    return peekNext().type === type;
+    return peekNext()?.type === type;
   }
 
   function program() {
