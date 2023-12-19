@@ -245,7 +245,7 @@ export function compile(ast: AST.Program, opts: CompileOptions = {
   }
   function compileMiscFunction(expr: AST.MiscFunction): PartialCode {
     return partial([
-      "(" + compileIdentifier(expr.name),
+      "(" + compileFunctionValue(expr.func),
       ...expr.arguments.map((arg) => layer(compileExpr(arg))),
       ")",
     ]);

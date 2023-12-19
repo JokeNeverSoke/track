@@ -1,2 +1,5 @@
-(define f (lambda (x : Number & y : Number -> Number) (+ x y)))
-(f 1 2)
+(+ 1 
+  (cond ((= 1 2) 3)
+        ((= 1 1) #true)
+        (else ""))
+)

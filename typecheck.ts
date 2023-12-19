@@ -24,6 +24,26 @@ type CodeType = {
   types: CodeType[];
 };
 
+function kekabToCamelCase(str: string): string {
+  return str.replace(/-([a-z])/g, (g) => g[1].toUpperCase()).replace(
+    /^\w/,
+    (c) => c.toUpperCase(),
+  );
+}
+
+function p(t: CodeType): string {
+  if (t.type === "union") {
+    return "(One-of " + t.types.map(p).join(" ") + ")";
+  } else if (t.type === "function") {
+    return "(" + t.args.map(p).join(" ") + " -> " + p(t.ret) + ")";
+  } else if (t.type === "list") {
+    return "(Listof " + p(t.subtype) + ")";
+  } else if (t.type === "struct") {
+    return kekabToCamelCase(t.name);
+  } else {
+    return kekabToCamelCase(t.type);
+  }
+}
 function collapse(t: CodeType): CodeType {
   if (t.type === "union") {
     const types = t.types.map(collapse);
@@ -293,10 +313,12 @@ export function typecheck(ast: AST.Program): TypeError[] {
   function typecheckExpr(expr: AST.Expr, env: Env): CodeType {
     switch (expr.type) {
       case "define-struct": // already handled
-      case "if-statement":
-      case "cond-statement":
       case "require-statement":
         return { type: "any" };
+      case "cond-statement":
+        return typecheckCondStatement(expr, env);
+      case "if-statement":
+        return typecheckIfStatement(expr, env);
       case "lambda-statement":
         return typecheckLambdaStatement(expr, env);
       case "let-statement":
@@ -335,6 +357,43 @@ export function typecheck(ast: AST.Program): TypeError[] {
         };
     }
   }
+  function typecheckCondStatement(
+    expr: AST.CondStatement,
+    env: Env,
+  ): CodeType {
+    const types = expr.clauses.clauses.map((clause) => {
+      const condType = typecheckExpr(clause.condition, env);
+      if (!canBe(condType, { type: "boolean" })) {
+        errors.push({
+          message: `cond condition expects Boolean, but got ${
+            p(condType)
+          } instead`,
+        });
+      }
+      return typecheckExpr(clause.then, env);
+    });
+    if (expr.clauses.else !== null) {
+      types.push(typecheckExpr(expr.clauses.else, env));
+    }
+    return collapse({
+      type: "union",
+      types,
+    });
+  }
+  function typecheckIfStatement(expr: AST.IfStatement, env: Env): CodeType {
+    const condType = typecheckExpr(expr.condition, env);
+    if (!canBe(condType, { type: "boolean" })) {
+      errors.push({
+        message: `if condition expects Boolean, but got ${p(condType)} instead`,
+      });
+    }
+    const thenType = typecheckExpr(expr.then, env);
+    const elseType = typecheckExpr(expr.else, env);
+    return collapse({
+      type: "union",
+      types: [thenType, elseType],
+    });
+  }
   function typecheckLambdaStatement(
     expr: AST.LambdaStatement,
     env: Env,
@@ -370,8 +429,9 @@ export function typecheck(ast: AST.Program): TypeError[] {
     const expectedReturn = toActualType(expr.parameters.returnType);
     if (!canBe(actualReturn, expectedReturn)) {
       errors.push({
-        message:
-          `function expects return type ${expectedReturn.type}, but got ${actualReturn.type} instead`,
+        message: `function expects return type ${p(expectedReturn)}, but got ${
+          p(actualReturn)
+        } instead`,
       });
     }
     return {
@@ -489,8 +549,9 @@ export function typecheck(ast: AST.Program): TypeError[] {
       const expectedReturn = toActualType(expr.signature.returnType);
       if (!canBe(ret, expectedReturn)) {
         errors.push({
-          message:
-            `function ${expr.name.value} expects return type ${expectedReturn.type}, but got ${ret.type} instead`,
+          message: `function ${expr.name.value} expects return type ${
+            p(expectedReturn)
+          }, but got ${p(ret)} instead`,
         });
       }
     }
@@ -515,18 +576,26 @@ export function typecheck(ast: AST.Program): TypeError[] {
     expr: AST.MiscFunction,
     env: Env,
   ): CodeType {
-    const name = expr.name.value;
-    const type = env.get(name);
+    const type = expr.func.type === "identifier"
+      ? env.get(expr.func.value)
+      : typecheckExpr(expr.func, env);
     if (type === undefined) {
       errors.push({
-        message: `undefined function identifier ${name}`,
+        message: `undefined function identifier ${
+          (expr.func as AST.Identifier).value
+        }`,
       });
       return {
         type: "flexible",
       };
-    } else if (!is(type, "function")) {
+    }
+
+    const name = expr.func.type === "identifier"
+      ? expr.func.value
+      : "anonymous function";
+    if (!is(type, "function")) {
       errors.push({
-        message: `${name} is not a function, it is a ${type.type}`,
+        message: `${name} is not callable`,
       });
       return {
         type: "flexible",
@@ -574,7 +643,7 @@ export function typecheck(ast: AST.Program): TypeError[] {
           errors.push({
             message: `${name} argument ${
               i + 1
-            } expects ${expected.type}, but received ${arg.type} instead`,
+            } expects ${expected.type}, but received ${p(arg)} instead`,
           });
         }
       }

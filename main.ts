@@ -150,13 +150,15 @@ export function tokenize(code: string) {
     current++;
     return true;
   }
-  function matchLong(expected: string) {
+  function matchLong(expected: string, dontAdvance = false) {
     if (isAtEnd()) return false;
     if (code.substring(current, current + expected.length) !== expected) {
       return false;
     }
 
-    current += expected.length;
+    if (!dontAdvance) {
+      current += expected.length;
+    }
     return true;
   }
   function peek() {
@@ -350,6 +352,28 @@ export function tokenize(code: string) {
       throw new Error("Unterminated multiline comment");
     }
   }
+  function boolean_() {
+    // #true or #false
+    if (matchLong("true")) {
+      pushToken({
+        type: "boolean",
+        value: true,
+        isTyped: false,
+        ...position(),
+      });
+    } else if (
+      matchLong("false")
+    ) {
+      pushToken({
+        type: "boolean",
+        value: false,
+        isTyped: false,
+        ...position(),
+      });
+    } else {
+      throw new Error(`Invalid character after #`);
+    }
+  }
 
   while (!isAtEnd()) {
     const char = advance();
@@ -394,6 +418,10 @@ export function tokenize(code: string) {
       case "#":
         if (match("|")) {
           multilineComment();
+        } else if (
+          matchLong("true", true) || matchLong("false", true)
+        ) {
+          boolean_();
         } else {
           throw new Error(`Invalid character after #: ${char}`);
         }
@@ -594,7 +622,7 @@ export type RequireStatement = {
 };
 export type MiscFunction = {
   type: "misc-function";
-  name: Identifier;
+  func: FunctionValue;
   arguments: FunctionValue[];
 };
 export type Value =
@@ -854,6 +882,7 @@ export function parse(tokens: Token[]) {
     consume("if", "Expected if");
     const condition = functionValue();
     const then = functionValue();
+    console.log({ condition, then });
     const else_ = functionValue();
     consume("rightParen", "Expected ) after if statement");
     return {
@@ -879,9 +908,11 @@ export function parse(tokens: Token[]) {
       clauses.push(condClause());
     }
     let else_ = null;
-    if (check("else")) {
-      advance();
+    if (checkNext("else")) {
+      consume("leftParen", "Expected ( before else clause")
+      consume("else", "Expected else");
       else_ = functionValue();
+      consume("rightParen", "Expected ) after else clause");
     }
     return {
       type: "cond-clause-list",
@@ -1005,7 +1036,7 @@ export function parse(tokens: Token[]) {
   }
   function miscFunction(): MiscFunction {
     consume("leftParen", "Expected ( before function");
-    const name = identifier();
+    const func = functionValue();
     const arguments_: FunctionValue[] = [];
     while (!check("rightParen")) {
       arguments_.push(functionValue());
@@ -1013,7 +1044,7 @@ export function parse(tokens: Token[]) {
     consume("rightParen", "Expected ) after function");
     return {
       type: "misc-function",
-      name,
+      func,
       arguments: arguments_,
     };
   }
