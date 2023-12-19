@@ -1,9 +1,3 @@
-
-(define (k x : Number & y : Number -> Number)
-  "")
-(define (v u : String -> Number)
-  (string->number u))
-(+ (k 1 2) (v "3"))
-;; wrong example
-(+ (v 1) (k 2))
-(k 3 "4")
+(define (f x : String & y : Number -> Number)
+  (local ([define (g z : Number -> Number) (+ y z)])
+    (+ (string->number x) (g y) 5)))

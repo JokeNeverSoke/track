@@ -360,9 +360,11 @@ export function tokenize(code: string) {
     }
 
     switch (char) {
+      case "[":
       case "(":
         pushToken({ type: "leftParen", isTyped: false, ...position() });
         break;
+      case "]":
       case ")":
         pushToken({ type: "rightParen", isTyped: false, ...position() });
         break;
@@ -509,7 +511,7 @@ export type TypedParameters = {
     name: Identifier;
     type: TypeAnnotation;
   }[];
-  returnType: TypeAnnotation;
+  returnType: TypeAnnotation | null;
 };
 export type TypeAnnotation = TypeFunction | TypeLiteral;
 export type TypeFunction = {
@@ -738,10 +740,13 @@ export function parse(tokens: Token[]) {
     };
   }
   function defineStruct(): DefineStruct {
+    consume("leftParen", "Expected ( before define-struct");
+    consume("define-struct", "Expected define-struct");
     const name = identifier();
     consume("leftParen", "Expected ( before struct fields");
     const fields = parameters();
     consume("rightParen", "Expected ) after struct fields");
+    consume("rightParen", "Expected ) after define-struct");
     return {
       type: "define-struct",
       name,
@@ -766,15 +771,20 @@ export function parse(tokens: Token[]) {
     consume("t-is", "Expected :");
     const type = typeAnnotation();
     parameters.push({ name, type });
-    while (!check("t-produce")) {
+    while (check("t-and")) {
       consume("t-and", "Expected &");
       const name = identifier();
       consume("t-is", "Expected :");
       const type = typeAnnotation();
       parameters.push({ name, type });
     }
-    consume("t-produce", "Expected ->");
-    const returnType = typeAnnotation();
+
+    let returnType: TypeAnnotation | null = null;
+    if (check("t-produce")) {
+      consume("t-produce", "Expected ->");
+      returnType = typeAnnotation();
+    }
+
     return {
       type: "typed-parameters",
       parameters,

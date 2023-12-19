@@ -26,6 +26,8 @@ switch (command) {
     const { typecheck } = await import("./typecheck.ts");
     const source = await Deno.readTextFile(file);
     const tokens = tokenize(source);
+
+    console.log(tokens);
     const ast = parse(tokens);
     const errors = typecheck(ast);
     if (errors.length > 0) {

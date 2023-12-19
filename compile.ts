@@ -134,7 +134,8 @@ export function compile(ast: AST.Program, opts: CompileOptions = {
             : typeToString(param.type as AST.TypeAnnotation);
         }).join(" ")
       } -> ${
-        expr.signature.type === "untyped-parameters"
+        expr.signature.type === "untyped-parameters" ||
+          expr.signature.returnType === null
           ? "any"
           : typeToString(expr.signature.returnType)
       }`,
@@ -167,7 +168,7 @@ export function compile(ast: AST.Program, opts: CompileOptions = {
   function compileDefineStruct(expr: AST.DefineStruct): PartialCode {
     return partial([
       "(define-struct " + compileIdentifier(expr.name) +
-      " (" + compileFunctionSignature(expr.fields) + ")",
+      " (" + compileFunctionSignature(expr.fields) + "))",
     ]);
   }
   function compileCondStatement(expr: AST.CondStatement): PartialCode {
