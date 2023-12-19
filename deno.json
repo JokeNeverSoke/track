@@ -1,5 +1,10 @@
 {
   "tasks": {
-    "build": "deno compile --allow-all -o ./dist/trc ./cli.ts"
+    "build": "deno compile --allow-all -o ./dist/trc ./cli.ts",
+    "build:linux": "deno compile --allow-all -o ./dist/trc-linux --target x86_64-unknown-linux-gnu ./cli.ts",
+    "build:windows": "deno compile --allow-all -o ./dist/trc-windows --target x86_64-pc-windows-msvc ./cli.ts",
+    "build:mac": "deno compile --allow-all -o ./dist/trc-mac --target x86_64-apple-darwin ./cli.ts",
+    "build:mac-arm": "deno compile --allow-all -o ./dist/trc-mac-arm --target aarch64-apple-darwin ./cli.ts",
+    "build:all": "deno task build:linux && deno task build:windows && deno task build:mac && deno task build:mac-arm"
   }
 }
