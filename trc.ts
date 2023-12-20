@@ -1,8 +1,4 @@
 import { parseArgs } from "https://deno.land/std@0.209.0/cli/mod.ts";
-import { parse, tokenize } from "./parser.ts";
-import { compile } from "./compile.ts";
-import { typecheck } from "./typecheck.ts";
-import { fmtError } from "./fmtErrors.ts";
 import {
   bgGreen,
   bold,
@@ -11,6 +7,11 @@ import {
   underline,
   white,
 } from "https://deno.land/std@0.208.0/fmt/colors.ts";
+import { parse, tokenize } from "./parser.ts";
+import { compile } from "./compile.ts";
+import { typecheck } from "./typecheck.ts";
+import { fmtError } from "./fmtErrors.ts";
+import { langs } from "./langs/mod.ts";
 
 const { _, ...args } = parseArgs(Deno.args, {
   string: ["_", "--out"],
@@ -21,7 +22,7 @@ const { _, ...args } = parseArgs(Deno.args, {
   alias: {},
 });
 
-const [file, ...rest] = _;
+const [file] = _;
 const out = args["--out"] ?? "out.rkt";
 
 if (!file) {
@@ -61,7 +62,9 @@ const source = await Deno.readTextFile(file);
 const tokens = tokenize(source);
 const ast = parse(tokens);
 if (!args["no-check"]) {
-  const errors = typecheck(ast).sort((a, b) => {
+  const errors = typecheck(ast, {
+    baseEnv: langs["htdp/bsl"],
+  }).sort((a, b) => {
     const { range: { start: aStart } } = a;
     const { range: { start: bStart } } = b;
     if (aStart.line === bStart.line) {

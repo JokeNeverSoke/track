@@ -1,33 +1,5 @@
 import * as AST from "./parser.ts";
-
-type Range = {
-  start: AST.Position;
-  end: AST.Position;
-};
-export type TypeError = {
-  message: string;
-  range: Range;
-  supplements?: { range: Range; annotation: string }[];
-};
-type CodeType = {
-  type: "number" | "string" | "boolean" | "symbol";
-} | {
-  type: "list";
-  subtype: CodeType;
-} | {
-  type: "function";
-  args: Array<CodeType & { expandable?: boolean }>;
-  ret: CodeType;
-} | {
-  type: "struct";
-  name: string;
-} | {
-  // flexible does not raise errors, while any does
-  type: "flexible" | "any" | "void";
-} | {
-  type: "union";
-  types: CodeType[];
-};
+import { CodeType, LanguageEnvironment, TypeError } from "./types.ts";
 
 function kekabToCamelCase(str: string): string {
   return str.replace(/-([a-z])/g, (g) => g[1].toUpperCase()).replace(
@@ -93,29 +65,6 @@ class Env {
   }
 }
 
-const BUILTINS: Record<string, CodeType> = {
-  "+": {
-    type: "function",
-    args: [{ type: "number", expandable: true }],
-    ret: { type: "number" },
-  },
-  "string-append": {
-    type: "function",
-    args: [{ type: "string", expandable: true }],
-    ret: { type: "string" },
-  },
-  "string->number": {
-    type: "function",
-    args: [{ type: "string" }],
-    ret: { type: "number" },
-  },
-  "number->string": {
-    type: "function",
-    args: [{ type: "number" }],
-    ret: { type: "string" },
-  },
-};
-
 function is<T extends string>(
   from: CodeType,
   to: T,
@@ -138,14 +87,16 @@ function canBe<T extends CodeType>(from: CodeType, to: T): boolean {
   }
 }
 
-export interface TypeCheckOptions {}
+export interface TypeCheckOptions {
+  baseEnv: LanguageEnvironment;
+}
 export function typecheck(
   ast: AST.Program,
-  opts: TypeCheckOptions = {},
+  opts: TypeCheckOptions,
 ): TypeError[] {
   let errors: TypeError[] = [];
   const globalEnv = new Env();
-  Object.entries(BUILTINS).forEach(([name, type]) => {
+  Object.entries(opts.baseEnv).forEach(([name, type]) => {
     globalEnv.set(name, type);
   });
   const structEnv: Record<
