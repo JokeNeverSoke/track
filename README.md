@@ -1,12 +1,21 @@
 # TRack
 
-T(yped)Rack(et) is an experimental in-progress type-checker/compiler I'm writing
-for the racket language. Help is appreciated in _any_ of the following domains:
+T(yped)Rack(et) is an experimental in-progress type-checker/compiler/language for the Racket language. Help is appreciated in _any_ of the following domains:
 
 - [ ] Compiler formatting
 - [ ] _Any_ enhancement to the codebase
 - [ ] Environment definitions (e.g. language packs & imported libraries)
 - [ ] Test suites
+
+## Installation
+
+First make sure you have deno installed. You can get deno [here](https://docs.deno.com/runtime/manual/getting_started/installation).
+
+```bash
+$ deno install --allow-read --allow-write https://raw.githubusercontent.com/JokeNeverSoke/track/master/trc.ts
+```
+
+This downloads the latest unstable code from GitHub. Versioned code will be added in the future.
 
 ## Usage
 

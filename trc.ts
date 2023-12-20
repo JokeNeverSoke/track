@@ -1,4 +1,3 @@
-import { inspect } from "node:util";
 import { parseArgs } from "https://deno.land/std@0.209.0/cli/mod.ts";
 import { parse, tokenize } from "./parser.ts";
 import { compile } from "./compile.ts";
